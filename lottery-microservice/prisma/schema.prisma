@@ -1,0 +1,48 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum BetStatus {
+    PENDING
+    WON
+    LOST
+}
+
+enum PaymentStatus {
+    PENDING
+    SUCCESS
+    FAILED
+}
+
+model Bet {
+    betId            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId           String        @db.Uuid
+    numbers          Int[]
+    stakeAmount      Int
+    drawId           String?       @db.Uuid
+    draw             Draw?         @relation(fields: [drawId], references: [drawId])
+    createdAt        DateTime      @default(now())
+    status           BetStatus     @default(PENDING)
+    paymentReference String?       @unique
+    paymentStatus    PaymentStatus @default(PENDING)
+
+    @@index([createdAt])
+}
+
+model Draw {
+    drawId        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    winningNumber Int?
+    drawDate      DateTime @unique @default(now())
+    winnerId      String?  @db.Uuid
+    createdAt     DateTime @default(now())
+
+    Bet Bet[]
+
+    @@index([createdAt])
+    @@index([drawDate])
+}

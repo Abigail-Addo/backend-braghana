@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    userId            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    phone             String           @unique
+    socialMediaId     String?
+    email             String?
+    fullname          String
+    username          String?
+    profilePictureUrl String?
+    public_id         String?
+    bio               String?
+    createdAt         DateTime         @default(now())
+    updatedAt         DateTime         @updatedAt
+    followers         Followers[]      @relation("UserFollowers")
+    followings        Followers[]      @relation("UserFollowing")
+    isActive          Boolean          @default(true)
+    lastLogin         DateTime?
+    role              String           @default("user")
+    otps              Otp[]
+    otpLogs           OtpLog[]         @relation("UserOtpLogs")
+    subscriptions     Subscription[]
+    NewsletterUser    NewsletterUser[]
+    reportedBy        ReportedUser[]   @relation("UserReports")
+    reportedUsers     ReportedUser[]   @relation("UserReported")
+
+    @@map("user")
+}
+
+model Otp {
+    otpId     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    otp       String   @unique
+    userId    String   @db.Uuid
+    expiresAt DateTime
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+    @@index([userId])
+}
+
+model OtpLog {
+    logId       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId      String   @db.Uuid
+    otp         String
+    status      String // 'success' or 'failed'
+    attemptedAt DateTime @default(now())
+
+    user User @relation("UserOtpLogs", fields: [userId], references: [userId], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([attemptedAt])
+}
+
+model ReportedUser {
+    reportId       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    reporterId     String   @db.Uuid
+    reportedUserId String   @db.Uuid
+    reason         String
+    reportedAt     DateTime @default(now())
+
+    reporter User @relation("UserReports", fields: [reporterId], references: [userId], onDelete: Cascade)
+    reported User @relation("UserReported", fields: [reportedUserId], references: [userId], onDelete: Cascade)
+
+    @@unique([reporterId, reportedUserId])
+    @@index([reporterId])
+    @@index([reportedUserId])
+}
+
+model Followers {
+    followId    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId      String   @db.Uuid //Refers to the user who is following someone.
+    followingId String   @db.Uuid //Refers to the user who is being followed.
+    followedAt  DateTime @default(now())
+
+    follower  User @relation("UserFollowers", fields: [userId], references: [userId], onDelete: Cascade)
+    following User @relation("UserFollowing", fields: [followingId], references: [userId], onDelete: Cascade)
+
+    @@unique([userId, followingId])
+    @@index([userId])
+    @@index([followingId])
+}
+
+model Subscription {
+    subscriptionId String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId         String   @db.Uuid
+    isSubscribed   Boolean  @default(true)
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+    @@index([userId])
+    @@map("subscription")
+}
+
+model Newsletter {
+    newsletterId String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    title        String
+    description  String?
+    isActive     Boolean  @default(true)
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+
+    users NewsletterUser[] // Many-to-many relation with users
+
+    @@map("newsletter")
+}
+
+model NewsletterUser {
+    id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId         String    @db.Uuid
+    newsletterId   String    @db.Uuid
+    subscribedAt   DateTime  @default(now())
+    unsubscribedAt DateTime?
+
+    user       User       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+    newsletter Newsletter @relation(fields: [newsletterId], references: [newsletterId], onDelete: Cascade)
+
+    @@unique([userId, newsletterId])
+    @@index([userId])
+    @@index([newsletterId])
+}

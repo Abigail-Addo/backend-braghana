@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+enum ReactionType {
+    Like
+    Love
+    Haha
+    Wow
+    Sad
+    Angry
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Post {
+    postId    String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId    String  @db.Uuid
+    content   String?
+    mediaUrl  String?
+    public_id String?
+    views     Int     @default(0)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    mutedPosts    MutedPost[]
+    reportedPosts ReportedPost[]
+    reactions     Reaction[]
+    comments      Comment[]
+    likes         LikePost[]
+    savedPost     SavedPost[]
+
+    @@index([userId])
+}
+
+model MutedPost {
+    muteId     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId     String    @db.Uuid
+    postId     String    @db.Uuid
+    mutedUntil DateTime?
+
+    post Post @relation(fields: [postId], references: [postId], onDelete: Cascade)
+}
+
+model ReportedPost {
+    reportId   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId     String   @db.Uuid
+    postId     String   @db.Uuid
+    reason     String
+    reportedAt DateTime @default(now())
+    post       Post     @relation(fields: [postId], references: [postId], onDelete: Cascade)
+}
+
+model Reaction {
+    reactionId String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId     String       @db.Uuid
+    postId     String?      @db.Uuid
+    commentId  String?      @db.Uuid
+    reaction   ReactionType
+    reactedAt  DateTime     @default(now())
+    post       Post?        @relation(fields: [postId], references: [postId], onDelete: Cascade)
+    comment    Comment?     @relation(fields: [commentId], references: [commentId], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([commentId])
+    @@index([postId])
+}
+
+model Comment {
+    commentId String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId    String     @db.Uuid
+    postId    String?    @db.Uuid
+    parentId  String?    @db.Uuid // Self-referencing field for parent comment
+    content   String
+    reactions Reaction[]
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
+    post      Post?      @relation(fields: [postId], references: [postId], onDelete: Cascade)
+    parent    Comment?   @relation("CommentReplies", fields: [parentId], references: [commentId])
+    replies   Comment[]  @relation("CommentReplies")
+}
+
+model LikePost {
+    likeId    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId    String   @db.Uuid
+    postId    String   @db.Uuid
+    createdAt DateTime @default(now())
+
+    post Post @relation(fields: [postId], references: [postId], onDelete: Cascade)
+
+    @@unique([userId, postId])
+}
+
+model SavedPost {
+    saveId  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId  String   @db.Uuid
+    postId  String   @db.Uuid
+    savedAt DateTime @default(now())
+
+    post Post @relation(fields: [postId], references: [postId], onDelete: Cascade)
+}

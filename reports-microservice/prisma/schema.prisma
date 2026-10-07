@@ -1,0 +1,25 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum Type {
+    ENQUIRY_FORM
+    CONTACT_US_FORM
+}
+
+model Report {
+    reportId     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    fullname     String
+    email        String
+    phone        String
+    subject      String
+    message      String
+    reportStatus String?
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+}
